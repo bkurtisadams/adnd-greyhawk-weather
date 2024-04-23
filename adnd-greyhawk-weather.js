@@ -1022,7 +1022,8 @@ function determinePrecipitationType() {
             applyWeatherEffects(matchedType.type);  // Adjust wind speed based on the weather effect
             GlobalWeatherConfig.exclusionReasons = [];  // Clear reasons after a match
             console.log("precipType returned = ", matchedType);
-            return matchedType.type; // Return the determined type
+            //return matchedType.type; // Return the determined type
+            return matchedType; // Return the determined type
         } else {
             console.log("No precipitation type matches the conditions.");
             GlobalWeatherConfig.exclusionReasons = exclusionReasons;  // Save the reasons if no match
@@ -1130,20 +1131,26 @@ function applyWeatherEffects(weatherType) {
 function precipChanceOfContinuing(weatherEffect) {
     // Roll percentile to see if weather continues
     const continuationRoll = Math.floor(Math.random() * 100) + 1;
+    console.log("d100 roll for precip continuing = ",continuationRoll," vs. weather chance of ", weatherEffect.contChance);
     if (continuationRoll <= weatherEffect.contChance) {
         // Weather continues, now determine if the type changes
-        console.log("precipitation continues");
+        console.log(`%cPrecipitation continues!`, "font-weight: bold");
         const changeTypeRoll = Math.floor(Math.random() * 10) + 1; // Roll d10 for type change
+        console.log(`%cChange type roll d10 = ${changeTypeRoll}`, "font-weight: bold");
         if (changeTypeRoll === 1) {
             // Move up one line in Precipitation Occurrence Table
-            adjustPrecipType(-1);
+            console.log(`Weather continues with weather type 1 line up on Precip Occurrence Table: ${weatherEffect.type}`, "font-weight: bold");
+            //adjustPrecipType(-1, weatherEffect);
+            weatherEffect = adjustPrecipType(-1, weatherEffect);
         } else if (changeTypeRoll === 10) {
             // Move down one line in Precipitation Occurrence Table
-            adjustPrecipType(1);
+            console.log(`Weather continues with weather type 1 line down on Precip Occurrence Table: ${weatherEffect.type}`, "font-weight: bold");
+            //adjustPrecipType(1, weatherEffect);
+            weatherEffect = adjustPrecipType(1, weatherEffect);
         } else {
-            // No change, roll for additional duration of continuation
-            console.log(`Weather continues with the same type: ${weatherEffect.name}`);
-            applyWeatherEffects(weatherEffect.name); // Optionally reapply the same weather effect
+            // No change to weather type, schedule a continuation note for the next day in Simple Calendar
+            console.log(`Weather continues with the same type: ${weatherEffect.type}`);
+            scheduleContinuationNote(weatherEffect);
         }
         // Optionally, roll again for the new duration here or handle it in applyWeatherEffects
     } else {
@@ -1151,19 +1158,52 @@ function precipChanceOfContinuing(weatherEffect) {
         console.log(`Weather event ends after its initial duration of ${weatherEffect.duration}.`);
         // Optionally clear the current weather settings or set to a default weather
     }
+    return weatherEffect;
 }
 
-// Example usage after the duration of current weather has expired
-//checkContinuation(currentWeatherEffect);
-
-function adjustPrecipType(change) {
-    let index = GlobalWeatherConfig.precipitationTable.findIndex(pt => pt.type === GlobalWeatherConfig.precipType);
-    if (index !== -1 && (index + change >= 0) && (index + change < GlobalWeatherConfig.precipitationTable.length)) {
-        GlobalWeatherConfig.precipType = GlobalWeatherConfig.precipitationTable[index + change].type;
-        console.log(`Precipitation type adjusted to: ${GlobalWeatherConfig.precipType}`);
-        applyWeatherEffects(GlobalWeatherConfig.precipType);
+/* function precipChanceOfContinuing(weatherEffect) {
+    const continuationRoll = Math.floor(Math.random() * 100) + 1;
+    console.log("d100 roll for precip continuing = ", continuationRoll, " vs. weather chance of ", weatherEffect.contChance);
+    if (continuationRoll <= weatherEffect.contChance) {
+        console.log(`%cprecipitation continues`, "font-weight: bold");
+        const changeTypeRoll = Math.floor(Math.random() * 10) + 1;
+        console.log(`%cChange type roll d10 = ${changeTypeRoll}`, "font-weight: bold");
+        if (changeTypeRoll === 1) {
+            weatherEffect = adjustPrecipType(-1, weatherEffect);
+        } else if (changeTypeRoll === 10) {
+            weatherEffect = adjustPrecipType(1, weatherEffect);
+        } else {
+            console.log(`Weather continues with the same type: ${weatherEffect.type}`);
+        }
+        // Schedule a continuation note for the next day in Simple Calendar
+        scheduleContinuationNote(weatherEffect);
+    } else {
+        console.log(`Weather event ends after its initial duration of ${weatherEffect.duration}.`);
     }
+    return weatherEffect;
 }
+*/
+
+
+function adjustPrecipType(change, weatherEffect) {
+    // Find the current index of the weather type in the precipitation table
+    let index = GlobalWeatherConfig.precipitationTable.findIndex(pt => pt.type === weatherEffect.type);
+    console.log(`Current precipitation type index: ${index}, requested change: ${change}`);
+    
+    // Check if the new index is within the bounds of the precipitation table
+    if (index !== -1 && (index + change >= 0) && (index + change < GlobalWeatherConfig.precipitationTable.length)) {
+        // Update the precipitation type based on the calculated index change
+        weatherEffect.type = GlobalWeatherConfig.precipitationTable[index + change].type;
+        console.log(`Precipitation type adjusted to: ${weatherEffect.type}`);
+        
+        // Apply the new weather effects based on the updated type
+        //applyWeatherEffects(weatherEffect.type);
+    } else {
+        console.log("Adjustment out of bounds or index not found. No change to precipitation type.");
+    }
+    return weatherEffect;  // Return the updated weather effect for chaining or further use
+}
+
 
 function resetWeatherEventDetails() {
     // Resetting event-specific details
@@ -1357,13 +1397,15 @@ async function generateWeather() {
     displayWeatherConditions();	// show the weather report in the chat
 	//displayWeatherConditions(true);	// DONT show the weather report in the chat, just the console
 
+    // Step 11: Create weather report as Simple Calendar note
+    console.log(`%cSTEP 11 (optional): Create weather report as Simple Calendar note`, "font-weight: bold");
     await addWeatherReportToSimpleCalendar();  // Make sure the weather is logged in the calendar
 		
     // Step 12: Determine type of continuing precipitation
     console.log(`%cSTEP 12: DETERMINE TYPE OF CONTINUING PRECIP`, "font-weight: bold");
     //if (currentWeatherEffect && currentWeatherEffect.contChance) {
     if (currentWeatherEffect) {        
-        console.log("precipitation was determined to have continued");
+        console.log("precipitation happened, check to see if it continues");
         precipChanceOfContinuing(currentWeatherEffect);  // Pass the current weather effect to check for continuation
     }
 
@@ -1806,6 +1848,8 @@ async function addWeatherReportToSimpleCalendar() {
         rainbowDisplay = GlobalWeatherConfig.flags.rainbowType;
     }
     
+    let highWindNotes = getWindEffects(GlobalWeatherConfig.windSpeed);
+
     // Create a summary of the weather conditions
     const weatherSummary = `
         Month: ${currentMonth}, Terrain: ${GlobalWeatherConfig.terrain}, Altitude: ${GlobalWeatherConfig.altitude} ft., Latitude: ${GlobalWeatherConfig.latitude}N°<br>
@@ -1813,13 +1857,14 @@ async function addWeatherReportToSimpleCalendar() {
         High: ${GlobalWeatherConfig.dailyHighTemp}°F, Low: ${GlobalWeatherConfig.dailyLowTemp}°F, Wind Chill: ${GlobalWeatherConfig.temperature.effective}°F<br>
         Sky Condition: ${GlobalWeatherConfig.skyCondition}; ${windLabel} (${GlobalWeatherConfig.windSpeed} mph from ${GlobalWeatherConfig.windDirection})<br>
         Precipitation: ${GlobalWeatherConfig.precipType || "None"} for ${GlobalWeatherConfig.initialWeatherEventDuration}, Amount: ${GlobalWeatherConfig.precipAmount || "0"}<br> 
+        Wind Notes: ${highWindNotes}<br> 
         Rainbow: ${rainbowDisplay}<br>`;
 
     // Generate formatted notes
     const standardNotes = weatherEffect ? "Standard Notes: " + formatFractions(weatherEffect.notes) : "";
     const specialNotes = specialWeatherEffect ? "Special Notes: " + formatFractions(specialWeatherEffect.notes) : "";
     const humidityNotes = GlobalWeatherConfig.humidityEffects;
-    
+        
     // Fetch the current date and time from Simple Calendar
     const currentDateTime = SimpleCalendar.api.currentDateTimeDisplay();
     const noteDate = `${currentDateTime.monthName} ${currentDateTime.day}${currentDateTime.daySuffix}, ${currentDateTime.year}`; // "Coldeven 11th, 568"
@@ -1877,4 +1922,37 @@ async function addWeatherReportToSimpleCalendar() {
     }
 }
 
+async function scheduleContinuationNote(weatherEffect) {
+    const currentDate = SimpleCalendar.api.currentDateTime();
+    const tomorrow = new Date(currentDate.year, currentDate.month - 1, currentDate.day + 1); // Adjust month for zero-based index
+    const noteDate = {
+        year: tomorrow.getFullYear(),
+        month: tomorrow.getMonth() + 1, // Convert back to one-based index for Simple Calendar
+        day: tomorrow.getDate(),
+        hour: 0,
+        minute: 0,
+        seconds: 0
+    };
+    const endDate = { ...noteDate, hour: 23, minute: 59, seconds: 59 };
+
+    const noteContent = `Weather continuation: Please roll for weather type "${weatherEffect.type}" for today.`;
+    try {
+        const newJournal = await SimpleCalendar.api.addNote(
+            "Weather Continuation",
+            noteContent,
+            noteDate,
+            endDate,
+            true, // allDay
+            SimpleCalendar.api.NoteRepeat.Never,
+            ['Weather Continuation'], // Category
+            "active", // calendarId: use the active calendar
+            null, // no macro associated
+            ['default'], // visible to all users
+            getAllUserIDs() // users to remind
+        );
+        console.log(newJournal ? "Continuation weather report added to Simple Calendar." : "Failed to add continuation weather report.");
+    } catch (error) {
+        console.error("Error adding continuation weather report to Simple Calendar:", error);
+    }
+}
 
