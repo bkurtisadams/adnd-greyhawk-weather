@@ -1,5 +1,5 @@
 console.log("%cAD&D WEATHER MODULE LOADED!!", "font-weight: bold; color: red; font-size: 16px");
-console.log("reverted version");
+console.log("version 1.03");
 /*
 SimpleCalendar.api.getCurrentYear();
 SimpleCalendar.api.getCurrentMonth();
