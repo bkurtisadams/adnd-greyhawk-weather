@@ -36,8 +36,7 @@ var GlobalWeatherConfig = {
     precipBase: 0,
     precipAdj: 0,
 	precipAmount: 0,
-    precipContinues: 0,
-	windSpeedInitial: 0,
+    windSpeedInitial: 0,
 	windSpeed: 0,
 	windSpeedAdjustment: 0,
 	windDirection: 2,
@@ -77,6 +76,7 @@ var GlobalWeatherConfig = {
         Sunsebb: "Sunsebb (Winter)"
     },
 flags: {
+        precipContinues: false,
         useSimpleCalendar: false,
 		useHighWindTable: false,
 		useWindChill: false,
@@ -1133,7 +1133,9 @@ function precipChanceOfContinuing(weatherEffect) {
     const continuationRoll = Math.floor(Math.random() * 100) + 1;
     console.log("d100 roll for precip continuing = ",continuationRoll," vs. weather chance of ", weatherEffect.contChance);
     if (continuationRoll <= weatherEffect.contChance) {
-        // Weather continues, now determine if the type changes
+        // Weather continues, set global flag to TRUE and now determine if the type changes
+        GlobalWeatherConfig.flags.precipContinues = true;
+        console.log("precip continues flag set to: ", GlobalWeatherConfig.flags.precipContinues);
         console.log(`%cPrecipitation continues!`, "font-weight: bold");
         const changeTypeRoll = Math.floor(Math.random() * 10) + 1; // Roll d10 for type change
         console.log(`%cChange type roll d10 = ${changeTypeRoll}`, "font-weight: bold");
@@ -1234,6 +1236,8 @@ function resetWeatherEventDetails() {
     GlobalWeatherConfig.humidity = 0; // Reset humidity to a default or recalculated value
     GlobalWeatherConfig.skyCondition = "clear"; // Reset sky condition to a default state
 
+    //GlobalWeatherConfig.flags.precipContinues = false;
+
     // Log the reset to ensure it's traceable
     console.log("Weather event details and related configurations have been reset.");
 }
@@ -1276,8 +1280,8 @@ async function displayWeatherConditions(onlyConsole = false) {
     const specialNotes = specialWeatherEffect ? formatFractions(specialWeatherEffect.notes) : "";
     const terrainNotes = terrainEffects ? formatFractions(terrainEffects.notes) : "Standard conditions apply.";
 
-    let windChillDisplay = GlobalWeatherConfig.dailyLowTemp < 35 && GlobalWeatherConfig.windChillAdj !== 'N/A' ? 
-        `Effective Wind Chill Temperature: ${GlobalWeatherConfig.windChillAdj}°F<br>` : "No significant wind chill.";
+    let windChillDisplay = GlobalWeatherConfig.dailyLowTemp < 35 && GlobalWeatherConfig.temperature.effective !== 'N/A' ? 
+        `${GlobalWeatherConfig.temperature.effective}°F<br>` : "No significant wind chill.";
 
     let humidityEffects = updateHumidityAndEffects(); // Calling the function to get humidity effects
     let humidityDisplay = (GlobalWeatherConfig.dailyHighTemp > 75) ? `Humidity Effects: ${humidityEffects}` : "Humidity effects not applicable.";
@@ -1302,16 +1306,17 @@ async function displayWeatherConditions(onlyConsole = false) {
         Sunset: ${GlobalWeatherConfig.adjustedSunset}<br>
         High Temperature: ${GlobalWeatherConfig.dailyHighTemp}°F<br>
         Low Temperature: ${GlobalWeatherConfig.dailyLowTemp}°F<br>
+        Wind Chill: ${windChillDisplay}
         ${recordTempDisplay}
         ${humidityDisplay}<br>
         Precipitation Type: ${GlobalWeatherConfig.precipType || "None"}<br>
         Precipitation Duration: ${GlobalWeatherConfig.initialWeatherEventDuration}<br>
         Precipitation Amount (inches): ${formatFractions(GlobalWeatherConfig.precipAmount.toString())}<br>
+        Precipitation Continues?: ${GlobalWeatherConfig.flags.precipContinues}<br>
+        Rainbow: ${rainbowDisplay}<br>
         Wind Speed: ${windLabel} (${windSpeed} mph)<br>
         Wind Direction: ${GlobalWeatherConfig.windDirection}<br>
-        ${windChillDisplay}<br>
         Special Weather Event: ${GlobalWeatherConfig.specialWeatherEvent || "None"}<br>
-        Rainbow: ${rainbowDisplay}<br>
         <strong>Terrain Notes:</strong> ${terrainNotes}<br>
         <strong>Notes:</strong> ${standardNotes}${specialNotes ? `<br><strong>Special Notes:</strong> ${specialNotes}` : ""}
     `;
@@ -1566,7 +1571,7 @@ function calculateLatitude(type, value) {
     return adjustedLatitude;
 }
 
-async function requestWeatherSettings() {
+/* async function requestWeatherSettings() {
     const formHtml = `
         <form>
             <div>
@@ -1646,6 +1651,78 @@ async function requestWeatherSettings() {
                 console.log(`Display mode switched to: ${GlobalWeatherConfig.displayMode}`);
             });
         }
+    });
+    d.render(true);
+} */
+async function requestWeatherSettings() {
+    const formHtml = `
+        <form>
+            <div>
+                <label for="useSimpleCalendar">Generate Simple Calendar Note:</label>
+                <input type="checkbox" id="useSimpleCalendar" name="useSimpleCalendar" ${GlobalWeatherConfig.useSimpleCalendar ? 'checked' : ''}>
+            </div>
+            <div>
+                <label for="month">Month/Festival:</label>
+                <select id="month" name="month">
+                    ${Object.keys(GlobalWeatherConfig.calendarLabels).map(month => `<option value="${month}" ${GlobalWeatherConfig.month === month ? 'selected' : ''}>${GlobalWeatherConfig.calendarLabels[month]}</option>`).join('')}
+                </select>
+            </div>
+            <div>
+                <label for="terrain">Terrain:</label>
+                <select id="terrain" name="terrain">
+                    ${Object.keys(GlobalWeatherConfig.terrainEffects).map(terrain => `<option value="${terrain}" ${GlobalWeatherConfig.terrain === terrain ? 'selected' : ''}>${terrain}</option>`).join('')}
+                </select>
+            </div>
+            <div>
+                <label for="altitude">Altitude (in thousands of feet):</label>
+                <input type="number" id="altitude" name="altitude" step="0.1" value="${GlobalWeatherConfig.altitude / 1000}" min="0" max="30">
+            </div>
+            <div>
+                <label for="latitudeType">Latitude Input Type:</label>
+                <select id="latitudeType" name="latitudeType">
+                    <option value="latitude" selected>Choose Latitude</option>
+                    <option value="milesNorth">Miles North of the city of Greyhawk</option>
+                    <option value="milesSouth">Miles South of the city of Greyhawk</option>
+                </select>
+            </div>
+            <div>
+                <label for="latitude">Latitude or Distance:</label>
+                <input type="text" id="latitude" name="latitude" value="${GlobalWeatherConfig.latitude}">
+            </div>
+        </form>
+    `;
+
+    let d = new Dialog({
+        title: "Enter Weather Settings",
+        content: formHtml,
+        buttons: {
+            submit: {
+                label: "Submit",
+                callback: async (html) => {
+                    const useSimpleCalendar = html.find('#useSimpleCalendar').is(':checked');
+                    GlobalWeatherConfig.useSimpleCalendar = useSimpleCalendar;
+                    const month = html.find('#month').val();
+                    const terrain = html.find('#terrain').val();
+                    const altitude = parseFloat(html.find('#altitude').val()) * 1000;
+                    const latitudeType = html.find('#latitudeType').val();
+                    const latitudeInput = html.find('#latitude').val().trim();
+
+                    if (!latitudeInput || isNaN(latitudeInput)) {
+                        alert("Please enter a valid latitude or distance.");
+                        return;
+                    }
+
+                    const latitude = calculateLatitude(latitudeType, parseInt(latitudeInput, 10));
+                    updateGlobalWeatherConfig(month, terrain, altitude, latitude);
+                    generateWeather();
+                }
+            },
+            cancel: {
+                label: "Cancel",
+                callback: () => console.log("Weather settings update canceled.")
+            }
+        },
+        default: "submit"
     });
     d.render(true);
 }
