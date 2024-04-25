@@ -16,12 +16,12 @@ SimpleCalendar.api.pauseClock();
 */
 var GlobalWeatherConfig = {
     year: 568,
-    month: "Coldeven",
-    day: "Starday",
-    latitude: 32,	// City of Greyhawk is at 35 deg. latitude
+    month: "",
+    day: "",
+    latitude: 35,	// City of Greyhawk is at 35 deg. latitude
 	latitudeTempAdj: 0,
-    terrain: "Mountains",
-    altitude: 6000,
+    terrain: "",
+    altitude: 0,
 	altitudeTempAdj: 0,
     baseDailyTemp: 0,
     dailyHighTemp: 0,
@@ -82,7 +82,7 @@ flags: {
 		useWindChill: false,
         specialWeather: false,
 		rainbow: false,
-        onLand: true,
+        onLand: false,
         atSea: false,
         inAir: false,
         inBattle: false,
@@ -532,51 +532,57 @@ standardWeatherTable: [
 
 highWindsTable: [
     {
-        "windSpeedRange": "0-29 mph",
-        "effects": {
-            "onLand": "No effect",
-            "atSea": "No effect",
-            "inAir": "No effect",
-            "inBattle": "No effect"
+        minSpeed: 0,
+        maxSpeed: 29,
+        effects: {
+            onLand: "No effect",
+            atSea: "No effect",
+            inAir: "No effect",
+            inBattle: "No effect"
         }
     },
     {
-        "windSpeedRange": "30-44 mph",
-        "effects": {
-            "onLand": "All travel slowed by 25%; torches will be blown out",
-            "atSea": "Sailing difficult; rowing impossible",
-            "inAir": "Creatures eagle-size and below can't fly",
-            "inBattle": "Missiles at 1/2 range and -1 to hit"
+        minSpeed: 30,
+        maxSpeed: 44,
+        effects: {
+            onLand: "All travel slowed by 25%; torches will be blown out",
+            atSea: "Sailing difficult; rowing impossible",
+            inAir: "Creatures eagle-size and below can't fly",
+            inBattle: "Missiles at 1/2 range and -1 to hit"
         }
     },
     {
-        "windSpeedRange": "45-59 mph",
-        "effects": {
-            "onLand": "All travel slowed by 50%; torches and small fires will be blown out",
-            "atSea": "Minor ship damage (d4 structural points) may occur; wave height 3d6 ft.",
-            "inAir": "Man-sized creatures cannot fly",
-            "inBattle": "Missiles at 1/4 range and -3 to hit"
+        minSpeed: 45,
+        maxSpeed: 59,
+        effects: {
+            onLand: "All travel slowed by 50%; torches and small fires will be blown out",
+            atSea: "Minor ship damage (d4 structural points) may occur; wave height 3d6 ft.",
+            inAir: "Man-sized creatures cannot fly",
+            inBattle: "Missiles at 1/4 range and -3 to hit"
         }
     },
     {
-        "windSpeedRange": "60-74 mph",
-        "effects": {
-            "onLand": "Small trees are uprooted; all travel slowed by 75%; roofs may be torn off",
-            "atSea": "Ships are endangered (d10 structural damage) and blown off course; wave height d10+20 ft.",
-            "inAir": "No creatures can fly, except those from the Elemental Plane of Air",
-            "inBattle": "No missile fire permitted; all non-magical weapon attacks are -1 to hit; dexterity bonuses to AC cancelled"
+        minSpeed: 60,
+        maxSpeed: 74,
+        effects: {
+            onLand: "Small trees are uprooted; all travel slowed by 75%; roofs may be torn off; torches and medium-sized fires will be blown out.",
+            atSea: "Ships are endangered (d10 structural damage) and blown off course; wave height d10+20 ft.",
+            inAir: "No creatures can fly, except those from the Elemental Plane of Air",
+            inBattle: "No missile fire permitted; all non-magical weapon attacks are -1 to hit; dexterity bonuses to AC cancelled"
         }
     },
     {
-        "windSpeedRange": "75+ mph",
-        "effects": {
-            "onLand": "Only strong stone buildings will be undamaged; travel is impossible",
-            "atSea": "Ships are capsized and sunk; wave height d20+20 ft. or more",
-            "inAir": "No creatures can fly, except those from the Elemental Plane of Air",
-            "inBattle": "No missile fire permitted; all non-magical weapon attacks at -3 to hit; 20% chance per attack that any weapon will be torn from the wielder's grip by the wind; dexterity bonuses to AC cancelled"
+        minSpeed: 75,
+        maxSpeed: 200,
+        effects: {
+            onLand: "Only strong stone buildings will be undamaged; travel is impossible; up to large trees are damaged or uprooted; roofs will be torn off; torches and large fires will be blown out.",
+            atSea: "Ships are capsized and sunk; wave height d20+20 ft. or more",
+            inAir: "No creatures can fly, except those from the Elemental Plane of Air",
+            inBattle: "No missile fire permitted; all non-magical weapon attacks at -3 to hit; 20% chance per attack that any weapon will be torn from the wielder's grip by the wind; dexterity bonuses to AC cancelled"
         }
     }
 ],
+
 
 baselineData: {
     "Needfest": { baseDailyTemp: 30, dailyHighAdj: "d10", dailyLowAdj: "-d20", chanceOfPrecip: 46, skyConditions: { clear: [1, 23], partlyCloudy: [24, 50], cloudy: [51, 100] }, sunrise: "7:10", sunset: "4:35" },
@@ -648,10 +654,14 @@ windChillTable: {
 	}
 }
 
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// UTILITY FUNCTIONS
+
 // Function to call when the weather button is clicked
 Hooks.once('ready', function() {
     // Is Simple Calendar loaded?
     if (window.SimpleCalendar) {
+        console.error('Simple Calendar is available: adding side button for weather.');
         addSidebarButton();
     } else {
         console.error('Simple Calendar is not available.');
@@ -669,7 +679,7 @@ function addSidebarButton() {
 }
 
 function generateWeatherOnClick(event) {
-    console.log("Weather generation triggered.");
+    console.error('Weather generation triggered.');
     // weather generation function here
     //generateWeather();
     requestWeatherSettings();
@@ -682,9 +692,6 @@ function getAllUserIDs() {
     return userIds;
 }
 
-///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-// UTILITY FUNCTIONS
-
 // Function to handle dice rolls
 function rollDice(formula) {
     new Roll(formula).roll({async: false}).toMessage({
@@ -693,7 +700,6 @@ function rollDice(formula) {
         flavor: "Rolling " + formula
     });
 }
-
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // STEP 1: DETERMINE TEMPERATURE FUNCTIONS
@@ -1156,36 +1162,13 @@ function precipChanceOfContinuing(weatherEffect) {
         }
         // Optionally, roll again for the new duration here or handle it in applyWeatherEffects
     } else {
-        // Weather event ends
+        // Weather event ends, set global flag to false
+        GlobalWeatherConfig.flags.precipContinues = false;
         console.log(`Weather event ends after its initial duration of ${weatherEffect.duration}.`);
         // Optionally clear the current weather settings or set to a default weather
     }
     return weatherEffect;
 }
-
-/* function precipChanceOfContinuing(weatherEffect) {
-    const continuationRoll = Math.floor(Math.random() * 100) + 1;
-    console.log("d100 roll for precip continuing = ", continuationRoll, " vs. weather chance of ", weatherEffect.contChance);
-    if (continuationRoll <= weatherEffect.contChance) {
-        console.log(`%cprecipitation continues`, "font-weight: bold");
-        const changeTypeRoll = Math.floor(Math.random() * 10) + 1;
-        console.log(`%cChange type roll d10 = ${changeTypeRoll}`, "font-weight: bold");
-        if (changeTypeRoll === 1) {
-            weatherEffect = adjustPrecipType(-1, weatherEffect);
-        } else if (changeTypeRoll === 10) {
-            weatherEffect = adjustPrecipType(1, weatherEffect);
-        } else {
-            console.log(`Weather continues with the same type: ${weatherEffect.type}`);
-        }
-        // Schedule a continuation note for the next day in Simple Calendar
-        scheduleContinuationNote(weatherEffect);
-    } else {
-        console.log(`Weather event ends after its initial duration of ${weatherEffect.duration}.`);
-    }
-    return weatherEffect;
-}
-*/
-
 
 function adjustPrecipType(change, weatherEffect) {
     // Find the current index of the weather type in the precipitation table
@@ -1206,50 +1189,6 @@ function adjustPrecipType(change, weatherEffect) {
     return weatherEffect;  // Return the updated weather effect for chaining or further use
 }
 
-
-function resetWeatherEventDetails() {
-    // Resetting event-specific details
-    GlobalWeatherConfig.initialWeatherEvent = "none";
-    GlobalWeatherConfig.initialWeatherEventDuration = 0;
-    GlobalWeatherConfig.continuingWeatherEvent = "none";
-    GlobalWeatherConfig.continuingWeatherEventDuration = 0;
-	
-	// Reset special weather event
-	GlobalWeatherConfig.specialWeather = false;
-	GlobalWeatherConfig.specialWeatherEvent = "none";
-	GlobalWeatherConfig.specialWeatherEventDuration = 0;
-
-    // Resetting precipitation details
-    GlobalWeatherConfig.precipType = "none";
-    GlobalWeatherConfig.precipAmount = 0;
-
-    // Resetting temperature specifics
-    GlobalWeatherConfig.dailyHighTemp = 0;
-    GlobalWeatherConfig.dailyLowTemp = 0;
-    GlobalWeatherConfig.temperature.effective = undefined;  // Reset effective temperature if used
-
-    // Resetting wind details
-    GlobalWeatherConfig.windSpeed = 0;
-    GlobalWeatherConfig.windSpeedInitial = 0; // Ensure the initial wind speed is reset as well
-
-    // Additional resets if necessary
-    GlobalWeatherConfig.humidity = 0; // Reset humidity to a default or recalculated value
-    GlobalWeatherConfig.skyCondition = "clear"; // Reset sky condition to a default state
-
-    //GlobalWeatherConfig.flags.precipContinues = false;
-
-    // Log the reset to ensure it's traceable
-    console.log("Weather event details and related configurations have been reset.");
-}
-
-// Global setting to track the display mode
-GlobalWeatherConfig.displayMode = "full";  // Can be "compact" or "full"
-
-function toggleDisplayMode() {
-    GlobalWeatherConfig.displayMode = GlobalWeatherConfig.displayMode === "full" ? "compact" : "full";
-    console.log(`Display mode set to: ${GlobalWeatherConfig.displayMode}`);
-}
-
 function formatFractions(text) {
     // Check if the text is undefined or not a string
     if (typeof text !== 'string') {
@@ -1264,8 +1203,12 @@ async function displayWeatherConditions(onlyConsole = false) {
     const weatherEffect = findWeatherEffect(GlobalWeatherConfig.initialWeatherEvent);
     const specialWeatherEffect = findSpecialWeatherEffect(GlobalWeatherConfig.specialWeatherEvent);
     const terrainEffects = GlobalWeatherConfig.terrainEffects[GlobalWeatherConfig.terrain];
-    const windSpeed = GlobalWeatherConfig.windSpeed; // Assume this is calculated elsewhere
+    const windSpeed = GlobalWeatherConfig.windSpeed;
     const windLabel = getWindSpeedLabel(windSpeed);
+    //const windEffects = getWindEffects(GlobalWeatherConfig.windSpeed); // Fetch wind effects once wind speed is determined
+    const windEffects = getWindEffects(GlobalWeatherConfig.windSpeed); // This should correctly fetch and format the wind effects
+    console.log("Wind Effects to Display:", windEffects);
+
 
     let dateDisplay = "Date not set"; // Default initialization for date display
     if (GlobalWeatherConfig.useSimpleCalendar) {
@@ -1279,9 +1222,10 @@ async function displayWeatherConditions(onlyConsole = false) {
     const standardNotes = weatherEffect ? formatFractions(weatherEffect.notes) : "No specific notes for this weather condition.";
     const specialNotes = specialWeatherEffect ? formatFractions(specialWeatherEffect.notes) : "";
     const terrainNotes = terrainEffects ? formatFractions(terrainEffects.notes) : "Standard conditions apply.";
+    //const highWindNotes = windNotes ? getWindEffects(GlobalWeatherConfig.windSpeed) : "";
 
     let windChillDisplay = GlobalWeatherConfig.dailyLowTemp < 35 && GlobalWeatherConfig.temperature.effective !== 'N/A' ? 
-        `${GlobalWeatherConfig.temperature.effective}°F<br>` : "No significant wind chill.";
+        `${GlobalWeatherConfig.temperature.effective}°F` : "No significant wind chill.";
 
     let humidityEffects = updateHumidityAndEffects(); // Calling the function to get humidity effects
     let humidityDisplay = (GlobalWeatherConfig.dailyHighTemp > 75) ? `Humidity Effects: ${humidityEffects}` : "Humidity effects not applicable.";
@@ -1306,7 +1250,7 @@ async function displayWeatherConditions(onlyConsole = false) {
         Sunset: ${GlobalWeatherConfig.adjustedSunset}<br>
         High Temperature: ${GlobalWeatherConfig.dailyHighTemp}°F<br>
         Low Temperature: ${GlobalWeatherConfig.dailyLowTemp}°F<br>
-        Wind Chill: ${windChillDisplay}
+        Wind Chill: ${windChillDisplay}<br>
         ${recordTempDisplay}
         ${humidityDisplay}<br>
         Precipitation Type: ${GlobalWeatherConfig.precipType || "None"}<br>
@@ -1316,6 +1260,7 @@ async function displayWeatherConditions(onlyConsole = false) {
         Rainbow: ${rainbowDisplay}<br>
         Wind Speed: ${windLabel} (${windSpeed} mph)<br>
         Wind Direction: ${GlobalWeatherConfig.windDirection}<br>
+        Wind Effects: ${windEffects}<br>
         Special Weather Event: ${GlobalWeatherConfig.specialWeatherEvent || "None"}<br>
         <strong>Terrain Notes:</strong> ${terrainNotes}<br>
         <strong>Notes:</strong> ${standardNotes}${specialNotes ? `<br><strong>Special Notes:</strong> ${specialNotes}` : ""}
@@ -1354,6 +1299,15 @@ function findWeatherEffect(weatherType) {
 
 async function generateWeather() {
 	console.log("Starting weather generation for today.");
+    
+    // Step 0: check terrain, latitude, and altitude
+    console.log(`%cSTEP 0: CHECK INPUT`, "font-weight: bold");
+    console.log("terrain is set to: ",GlobalWeatherConfig.terrain);
+    console.log("onLand flag is set to: ",GlobalWeatherConfig.flags.onLand);
+    console.log("atSea flag is set to: ",GlobalWeatherConfig.flags.atSea);
+    console.log("latitude is set to: ",GlobalWeatherConfig.latitude);
+    console.log("altitude is set to: ",GlobalWeatherConfig.altitude);
+
 
     // Step 1: Determine Temperature Extremes and Adjustments
     console.log(`%cSTEP 1: DETERMINE TEMPERATURES`, "font-weight: bold");
@@ -1414,9 +1368,10 @@ async function generateWeather() {
         precipChanceOfContinuing(currentWeatherEffect);  // Pass the current weather effect to check for continuation
     }
 
-    // Reset data
+    // Step 13: Reset data
+    console.log(`%cSTEP 13: RESET DATA`, "font-weight: bold");
 	resetWeatherEventDetails();
-	//console.log("Resetting weather data.");
+
 }
 
 
@@ -1457,22 +1412,6 @@ function triggerSpecialWeatherEvent(event) {
     }
 }
 
-/* function applyWindChill() {
-    if (GlobalWeatherConfig.dailyLowTemp < 35) {
-        const windSpeed = GlobalWeatherConfig.windSpeed;
-        const temp = GlobalWeatherConfig.dailyLowTemp;
-        const validWindSpeed = findClosestWindSpeed(windSpeed);  // Assuming this function is defined correctly
-        const windChillSubTable = GlobalWeatherConfig.windChillTable[validWindSpeed];
-        const validTemp = findClosestTemperature(temp, windChillSubTable);  // Assuming this function is defined correctly
-
-        const adjustedTemp = windChillSubTable[validTemp];
-        GlobalWeatherConfig.temperature.effective = adjustedTemp;
-        console.log(`Wind chill adjusted temperature: ${adjustedTemp}°F for low temp ${temp}°F with wind speed ${windSpeed} mph.`);
-    } else {
-        console.log("Temperature above 35°F, no wind chill adjustment applied.");
-        GlobalWeatherConfig.temperature.effective = 'N/A'; // Explicitly set to 'N/A' if no adjustment
-    }
-} */
 function applyWindChill() {
     if (GlobalWeatherConfig.dailyLowTemp < 35) {
         const windSpeed = GlobalWeatherConfig.windSpeed;
@@ -1571,89 +1510,6 @@ function calculateLatitude(type, value) {
     return adjustedLatitude;
 }
 
-/* async function requestWeatherSettings() {
-    const formHtml = `
-        <form>
-            <div>
-                <label for="useSimpleCalendar">Generate Simple Calendar Note:</label>
-                <input type="checkbox" id="useSimpleCalendar" name="useSimpleCalendar" ${GlobalWeatherConfig.useSimpleCalendar ? 'checked' : ''}>
-            </div>
-            <div>
-                <label for="month">Month/Festival:</label>
-                <select id="month" name="month">
-                    ${Object.keys(GlobalWeatherConfig.calendarLabels).map(month => `<option value="${month}" ${GlobalWeatherConfig.month === month ? 'selected' : ''}>${GlobalWeatherConfig.calendarLabels[month]}</option>`).join('')}
-                </select>
-            </div>
-            <div>
-                <label for="terrain">Terrain:</label>
-                <select id="terrain" name="terrain">
-                    ${Object.keys(GlobalWeatherConfig.terrainEffects).map(terrain => `<option value="${terrain}" ${GlobalWeatherConfig.terrain === terrain ? 'selected' : ''}>${terrain}</option>`).join('')}
-                </select>
-            </div>
-            <div>
-                <label for="altitude">Altitude (in thousands of feet):</label>
-                <input type="number" id="altitude" name="altitude" step="0.1" value="${GlobalWeatherConfig.altitude / 1000}" min="0" max="30">
-            </div>
-            <div>
-                <label for="latitudeType">Latitude Input Type:</label>
-                <select id="latitudeType" name="latitudeType">
-                    <option value="latitude" selected>Choose Latitude</option>
-                    <option value="milesNorth">Miles North of the city of Greyhawk</option>
-                    <option value="milesSouth">Miles South of the city of Greyhawk</option>
-                </select>
-            </div>
-            <div>
-                <label for="latitude">Latitude or Distance:</label>
-                <input type="text" id="latitude" name="latitude" value="${GlobalWeatherConfig.latitude}">
-            </div>
-            <div>
-                <button type="button" id="toggleDisplayMode">Toggle Display Mode (Current: ${GlobalWeatherConfig.displayMode || 'full'})</button>
-            </div>
-        </form>
-    `;
-
-    let d = new Dialog({
-        title: "Enter Weather Settings",
-        content: formHtml,
-        buttons: {
-            submit: {
-                label: "Submit",
-                callback: async (html) => {
-                    const useSimpleCalendar = html.find('#useSimpleCalendar').is(':checked');
-                    GlobalWeatherConfig.useSimpleCalendar = useSimpleCalendar;
-                    const month = html.find('#month').val();
-                    const terrain = html.find('#terrain').val();
-                    const altitude = parseFloat(html.find('#altitude').val()) * 1000;
-                    const latitudeType = html.find('#latitudeType').val();
-                    const latitudeInput = html.find('#latitude').val().trim();
-
-                    if (!latitudeInput || isNaN(latitudeInput)) {
-                        alert("Please enter a valid latitude or distance.");
-                        return;
-                    }
-
-                    const latitude = calculateLatitude(latitudeType, parseInt(latitudeInput, 10));
-                    updateGlobalWeatherConfig(month, terrain, altitude, latitude);
-                    generateWeather();
-                }
-            },
-            cancel: {
-                label: "Cancel",
-                callback: () => console.log("Weather settings update canceled.")
-            }
-        },
-        default: "submit",
-        render: (html) => {
-            const toggleButton = html.find('#toggleDisplayMode');
-            toggleButton.click(() => {
-                GlobalWeatherConfig.displayMode = GlobalWeatherConfig.displayMode === 'full' ? 'compact' : 'full';
-                toggleButton.text(`Toggle Display Mode (Current: ${GlobalWeatherConfig.displayMode})`);
-                console.log(`Display mode switched to: ${GlobalWeatherConfig.displayMode}`);
-            });
-        }
-    });
-    d.render(true);
-} */
 async function requestWeatherSettings() {
     const formHtml = `
         <form>
@@ -1727,7 +1583,6 @@ async function requestWeatherSettings() {
     d.render(true);
 }
 
-
 function updateGlobalWeatherConfig(month, terrain, altitude, latitude) {
     //GlobalWeatherConfig.year = year;
     GlobalWeatherConfig.month = month;
@@ -1735,49 +1590,40 @@ function updateGlobalWeatherConfig(month, terrain, altitude, latitude) {
     GlobalWeatherConfig.terrain = terrain;
     GlobalWeatherConfig.altitude = altitude;
     GlobalWeatherConfig.latitude = latitude;
+
+    // Update terrain flags based on selected terrain
+    updateTerrainFlags(terrain);
+
     // Add any additional logic to handle changes in configuration
     console.log("Global Weather Configuration Updated:", GlobalWeatherConfig);
 }
 
-
-function toggleDisplayMode() {
-    GlobalWeatherConfig.displayMode = GlobalWeatherConfig.displayMode === "full" ? "compact" : "full";
-    console.log(`Display mode switched to: ${GlobalWeatherConfig.displayMode}`);
-}
-
-
-/* function updateHumidityAndEffects() {
-    let currentTemperature = GlobalWeatherConfig.dailyHighTemp; // Assume you're interested in the high temp for the day.
-	console.log("High temp is: ", GlobalWeatherConfig.dailyHighTemp);
-	
-    if (currentTemperature > 75) {
-        // Roll percentile dice to determine current relative humidity
-        let humidity = Math.floor(Math.random() * 101); // 0 to 100% this is by the rules but is not realistic
-		//let humidity = 50 + Math.floor(Math.random() * 20 + 1) + Math.floor(Math.random() * 20 + 1); // 50 to 90%, this is more realistic
-
-		console.log("d100 for humidity = ", humidity);
-        let tempHumiditySum = currentTemperature + humidity;
-
-        //console.log(`Current Temperature: ${currentTemperature}°F, Humidity: ${humidity}), HumiditySum: ${tempHumiditySumumidity}%`);
-		console.log(`Current Temperature: ${currentTemperature}°F, Humidity: ${humidity}%, Humidity Sum: ${tempHumiditySum}°F`);
-
-        // Determine the effects based on the sum of temperature and humidity
-        if (tempHumiditySum >= 140 && tempHumiditySum <= 160) {
-            console.log("Effects: Move Normal, AC 0, To hit 0, Dexterity -1, Vision Normal, Rest per hour: 2 turns, Spell failure chance: 5%");
-        } else if (tempHumiditySum > 160 && tempHumiditySum <= 180) {
-            console.log("Effects: Move x3/4, AC 0, To hit -1, Dexterity -1, Vision x3/4, Rest per hour: 3 turns, Spell failure chance: 10%");
-        } else if (tempHumiditySum > 180 && tempHumiditySum <= 200) {
-            console.log("Effects: Move x1/2, AC -1, To hit -2, Dexterity -2, Vision x1/2, Rest per hour: 4 turns, Spell failure chance: 15%");
-        } else if (tempHumiditySum > 200) {
-            console.log("Effects: Move x1/4, AC -2, To hit -3, Dexterity -3, Vision x1/4, Rest per hour: 5 turns, Spell failure chance: 20%");
-        } else {
-            console.log("No significant heat and humidity effects.");
-        }
-    } else {
-        console.log("Temperature is not high enough for heat and humidity effects.");
+function updateTerrainFlags(terrain) {
+    switch (terrain) {
+        case 'Rough terrain or hills':
+        case 'Forest':
+        case 'Jungle':
+        case 'Swamp or marsh':
+        case 'Dust':
+        case 'Plains':
+        case 'Desert':
+        case 'Mountains':
+        case 'Seacoast':
+            GlobalWeatherConfig.flags.onLand = true;
+            console.log("Terrain is land-based:", terrain, "Setting onLand flag to true.");
+            break;
+        case 'At sea':
+            GlobalWeatherConfig.flags.atSea = true;
+            console.log("Terrain is sea-based:", terrain, "Setting atSea flag to true.");
+            break;
+        default:
+            console.log("Terrain does not match any predefined categories:", terrain);
+            break;
     }
+
+    console.log(`Terrain flags updated: onLand=${GlobalWeatherConfig.flags.onLand}, atSea=${GlobalWeatherConfig.flags.atSea}`);
 }
- */
+
 function updateHumidityAndEffects() {
     let currentTemperature = GlobalWeatherConfig.dailyHighTemp; // Using high temp for the day.
     let effectsDescription = "No significant heat and humidity effects."; // Default message
@@ -1872,21 +1718,46 @@ function getWindSpeedLabel(mph) {
         return "Unusually Strong Winds";
     }
 }
-function getWindEffects(windSpeed) {
-    // Directly reference the highWindsTable from the global configuration
-    const highWindsTable = GlobalWeatherConfig.highWindsTable;
 
-    // Iterate through the wind speed ranges to find the correct effects
+function getWindEffects(windSpeed) {
+    console.log("Checking wind effects for speed:", windSpeed);
+    const highWindsTable = GlobalWeatherConfig.highWindsTable;
+    console.log("getWindEffects called, Flag statuses - On Land:", GlobalWeatherConfig.flags.onLand, "At Sea:", GlobalWeatherConfig.flags.atSea, "In Air:", GlobalWeatherConfig.flags.inAir, "In Battle:", GlobalWeatherConfig.flags.inBattle);
+
+
     for (const entry of highWindsTable) {
-        const range = entry.windSpeedRange.split(" ")[0].split("-");
-        const minSpeed = parseInt(range[0]);
-        const maxSpeed = parseInt(range[1] || range[0]); // Handle single-value ranges appropriately
-        if (windSpeed >= minSpeed && (maxSpeed === minSpeed || windSpeed <= maxSpeed)) {
-            return entry.effects;
+        console.log(`Checking range: ${entry.minSpeed}-${entry.maxSpeed} for speed ${windSpeed}`);
+        if (windSpeed >= entry.minSpeed && windSpeed <= entry.maxSpeed) {
+            console.log(`Match found for ${windSpeed} mph in range '${entry.minSpeed}-${entry.maxSpeed}': ${JSON.stringify(entry.effects)}`);
+            return formatWindEffects(entry.effects);
         }
     }
-    return null; // Return null if no matching range is found (ensures robustness)
+    console.log("No matching wind range found.");
+    return "No significant wind effects.";
 }
+
+function formatWindEffects(effects) {
+    console.log("Formatting wind effects:", effects); // Debugging statement
+    let effectsString = "";
+
+    // Check each condition and append the respective effects
+    if (GlobalWeatherConfig.flags.onLand) {
+        effectsString += `Land: ${effects.onLand}<br>`;
+    }
+    if (GlobalWeatherConfig.flags.atSea) {
+        effectsString += `Sea: ${effects.atSea}<br>`;
+    }
+    if (GlobalWeatherConfig.flags.inAir) {
+        effectsString += `Air: ${effects.inAir}<br>`;
+    }
+    if (GlobalWeatherConfig.flags.inBattle) {
+        effectsString += `Battle: ${effects.inBattle}<br>`;
+    }
+
+    console.log("Compiled wind effects string:", effectsString); // Debugging statement
+    return effectsString || "No significant effects under current conditions.";
+}
+
 
 function getDayOfWeek(dayOfMonth) {
     const weekDays = ["Starday", "Sunday", "Moonday", "Godsday", "Waterday", "Earthday", "Freeday"];
@@ -2000,6 +1871,11 @@ async function addWeatherReportToSimpleCalendar() {
 }
 
 async function scheduleContinuationNote(weatherEffect) {
+    // Check if Simple Calendar integration is enabled
+    if (!GlobalWeatherConfig.useSimpleCalendar) {
+        console.log("Simple Calendar integration is disabled. Skipping scheduleContinuationNote.");
+        return; // Exit the function if Simple Calendar is not being used
+    }
     const currentDate = SimpleCalendar.api.currentDateTime();
     const tomorrow = new Date(currentDate.year, currentDate.month - 1, currentDate.day + 1); // Adjust month for zero-based index
     const noteDate = {
@@ -2033,3 +1909,46 @@ async function scheduleContinuationNote(weatherEffect) {
     }
 }
 
+function resetWeatherEventDetails() {
+    
+    // Reset terrain
+    GlobalWeatherConfig.flags.onLand = false;
+    GlobalWeatherConfig.flags.atSea = false;
+    GlobalWeatherConfig.flags.inAir = false;
+    GlobalWeatherConfig.flags.inBattle = false;
+    console.log("reset onLand flag = ", GlobalWeatherConfig.flags.onLand)
+    console.log("reset atSea flag = ", GlobalWeatherConfig.flags.atSea)
+    
+    // Resetting event-specific details
+    GlobalWeatherConfig.initialWeatherEvent = "none";
+    GlobalWeatherConfig.initialWeatherEventDuration = 0;
+    GlobalWeatherConfig.continuingWeatherEvent = "none";
+    GlobalWeatherConfig.continuingWeatherEventDuration = 0;
+	
+	// Reset special weather event
+	GlobalWeatherConfig.specialWeather = false;
+	GlobalWeatherConfig.specialWeatherEvent = "none";
+	GlobalWeatherConfig.specialWeatherEventDuration = 0;
+
+    // Resetting precipitation details
+    GlobalWeatherConfig.precipType = "none";
+    GlobalWeatherConfig.precipAmount = 0;
+
+    // Resetting temperature specifics
+    GlobalWeatherConfig.dailyHighTemp = 0;
+    GlobalWeatherConfig.dailyLowTemp = 0;
+    GlobalWeatherConfig.temperature.effective = undefined;  // Reset effective temperature if used
+
+    // Resetting wind details
+    GlobalWeatherConfig.windSpeed = 0;
+    GlobalWeatherConfig.windSpeedInitial = 0; // Ensure the initial wind speed is reset as well
+
+    // Additional resets if necessary
+    GlobalWeatherConfig.humidity = 0; // Reset humidity to a default or recalculated value
+    GlobalWeatherConfig.skyCondition = "clear"; // Reset sky condition to a default state
+
+    //GlobalWeatherConfig.flags.precipContinues = false;
+
+    // Log the reset to ensure it's traceable
+    console.log("Weather event details and related configurations have been reset.");
+}
